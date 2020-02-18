@@ -63,7 +63,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QCheckBox>
-
+#include  <QDebug>
 enum IOAttri{
 	Input,
 	Output
@@ -147,6 +147,26 @@ QStringList OnputGpio = {
 	"onput4_5V_10M",
 	"onput5_5V_10M",
 };
+QByteArray HexStringToByteArray(QString HexString)
+  {
+      bool ok;
+      QByteArray ret;
+      HexString = HexString.trimmed();
+      HexString = HexString.simplified();
+      QStringList sl = HexString.split(" ");
+ 
+      foreach (QString s, sl) {
+         if(!s.isEmpty()) {
+             char c = s.toInt(&ok,16)&0xFF;
+             if(ok){
+                 ret.append(c);
+             }else{
+                 qDebug()<<"非法的16进制字符："<<s;
+             }
+         }
+     }
+     return ret;
+ }
 class GpioWidget : public QWidget {
 public:
 	GpioWidget(GPIO& gpio, QWidget *parent = NULL) : 
@@ -356,7 +376,7 @@ public:
 		QLineEdit * pulseLineEdit = new QLineEdit;
 		QPushButton * movePushButton = new QPushButton("移动到(mm)");
 		QLineEdit * moveLineEdit = new QLineEdit;
-		QPushButton * posPushButton = new QPushButton("位置");
+	        posPushButton = new QPushButton("位置");
 		QLineEdit * posLineEdit = new QLineEdit;
 		QPushButton * gearPushButton = new QPushButton("齿轮比");
 		QLineEdit * gearLineEdit = new QLineEdit;
@@ -378,6 +398,8 @@ public:
 	}
 
 private:
+public:
+ QPushButton * posPushButton; 
 };
 
 //! [0]
@@ -454,6 +476,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(m_serial, &QSerialPort::readyRead, this, &MainWindow::readData);
     //connect(m_console, &Console::getData, this, &MainWindow::writeData);
+    connect(dbgGroupBox->posPushButton,SIGNAL(clicked()),this,SLOT(write()));
+   // qDebug()<<ByteArrayToHexString(cmdBA);
+
 }
 
 MainWindow::~MainWindow()
@@ -513,7 +538,7 @@ void MainWindow::about()
 }
 
 //! [6]
-void MainWindow::writeData(const QByteArray &data)
+void MainWindow::writeData( const QByteArray &data)
 {
     m_serial->write(data);
 }
@@ -526,7 +551,12 @@ void MainWindow::readData()
     //m_console->putData(data);
 }
 //! [7]
-
+void MainWindow::write()
+{
+     const  char* cmdString = "80 03 00 01 04 25 C9";
+    QByteArray cmdBA = HexStringToByteArray(cmdString);
+    writeData(cmdBA);
+}
 //! [8]
 void MainWindow::handleError(QSerialPort::SerialPortError error)
 {

@@ -80,9 +80,9 @@ private slots:
     void openSerialPort();
     void closeSerialPort();
     void about();
-    void writeData(const QByteArray &data);
+    void writeData( const QByteArray &data);
     void readData();
-
+    void write();
     void handleError(QSerialPort::SerialPortError error);
 
 private:

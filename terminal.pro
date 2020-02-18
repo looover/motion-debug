@@ -8,12 +8,15 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     settingsdialog.cpp \
-    console.cpp
+    console.cpp \
+    motion_uart.cpp \
+    crc.cpp
 
 HEADERS += \
     mainwindow.h \
     settingsdialog.h \
-    console.h
+    console.h \
+    motion_uart.hpp
 
 FORMS += \
     mainwindow.ui \

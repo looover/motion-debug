@@ -87,6 +87,8 @@ private slots:
     void readData();
     void handleError(QSerialPort::SerialPortError error);
 
+    void MoveTo();
+    void MovePulse();
     void GetPostion();
 private:
     void initActionsConnections();
@@ -104,6 +106,7 @@ private:
 
 private:
 	MoveDbgGroupBox * dbgGroupBox;
+	QComboBox * axisBox;
 };
 
 #endif // MAINWINDOW_H

@@ -295,19 +295,20 @@ public:
 		QGroupBox(name, parent)
 	{
 		QLabel *speedLabel = new QLabel(tr("移动速度"));
-		QComboBox * speedBox = new QComboBox();
+		speedBox = new QComboBox();
 		for(int i = 0; i < 4; i++){
 			QString s = "Speed";
 			speedBox->addItem(s);
 		}
-		QRadioButton * dir_positive = new QRadioButton(tr("正向"));
-		QRadioButton * dir_reverse  = new QRadioButton(tr("反向"));
+		dir_positive = new QRadioButton(tr("正向"));
+		dir_reverse  = new QRadioButton(tr("反向"));
 
 		QGridLayout * dbgLayout = new QGridLayout;
-		QPushButton * pulsePushButton = new QPushButton("移动固定(脉冲)");
-		QLineEdit * pulseLineEdit = new QLineEdit;
-		QPushButton * movePushButton = new QPushButton("移动到(mm)");
-		QLineEdit * moveLineEdit = new QLineEdit;
+		pulsePushButton = new QPushButton("移动固定(脉冲)");
+	        pulseLineEdit = new QLineEdit;
+
+	        movePushButton = new QPushButton("移动到(mm)");
+	        moveLineEdit = new QLineEdit;
 
 	        posPushButton = new QPushButton("位置");
 		posLineEdit = new QLineEdit;
@@ -333,12 +334,43 @@ public:
 	QPushButton* GetPosPushButton(){
 		return posPushButton;
 	}
-	QLineEdit* GetPosLineEdit(){
+	
+        QLineEdit* GetPosLineEdit(){
 		return posLineEdit;
+	}
+	QPushButton* GetPulsePushButton(){
+		return pulsePushButton;
+	}
+	
+ 	QPushButton * GetMovePushButton(){
+		return movePushButton;
+	}
+	QLineEdit* GetPulseLineEdit(){
+		return pulseLineEdit;
+	}
+	QLineEdit* GetMoveLineEdit(){
+		return moveLineEdit;
+	}
+        QComboBox * GetSpeedBox(){
+		return speedBox;
+	}
+	QRadioButton * GetRadioButton(){
+		return dir_positive;
 	}
 private:
 	QPushButton * posPushButton; 
 	QLineEdit * posLineEdit;
+
+	QPushButton * movePushButton; 
+	QLineEdit * moveLineEdit;
+
+	QLineEdit * pulseLineEdit;
+        QPushButton * pulsePushButton;
+	
+	QRadioButton* dir_positive;
+	QRadioButton* dir_reverse;
+
+	QComboBox *speedBox;
 };
 
 

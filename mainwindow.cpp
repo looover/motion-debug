@@ -104,7 +104,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	mainwidget = new QWidget;
 	QGridLayout * mainlayout = new QGridLayout;
 	QLabel *axisLabel = new QLabel(tr("移动轴"));
-	QComboBox * axisBox = new QComboBox();
+	axisBox = new QComboBox();
 	axisBox->addItem("x轴");
 	axisBox->addItem("y0轴");
 	axisBox->addItem("y1轴");
@@ -164,6 +164,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	
 	connect(m_serial, &QSerialPort::errorOccurred, this, &MainWindow::handleError);
 	connect(dbgGroupBox->GetPosPushButton(), SIGNAL(clicked()), this, SLOT(GetPostion()));
+	connect(dbgGroupBox->GetMovePushButton(), SIGNAL(clicked()), this, SLOT(MoveTo()));
+	connect(dbgGroupBox->GetPulsePushButton(), SIGNAL(clicked()), this, SLOT(MovePulse()));
 
 	//connect(m_serial, &QSerialPort::readyRead, this, &MainWindow::readData);
 	// qDebug()<<ByteArrayToHexString(cmdBA);
@@ -241,33 +243,38 @@ void MainWindow::readData()
 //! [7]
 void MainWindow::GetPostion()
 {
-	//const  char* cmdString = "80 03 00 01 04 25 C9";
-	//QByteArray cmdBA = HexStringToByteArray(cmdString);
-	//writeData(cmdBA);
-/*
-	unsigned char data[16] = {
-		0x80, 0x06, 0x00, 0x00, 
-		0x08, 0x02, 0x00, 0x00, 
-		0x00, 0x00, 0x32, 0x00, 
-		0x00, 0xB3, 0xF4
-	};
-	QByteArray array((char*)data, 15);
-	writeData(array);
-
-	qDebug() << "send data" << array;
-
-	m_serial->waitForReadyRead(10000); 
-	unsigned char recv[64];
-	qint64 len = m_serial->read((char *)recv, 64);
-	qDebug() << "recv data" << len;
-*/
 	//m_serial->MoveTo(0, 0, 0, 12800);
 	int pos = 0;
 	if(m_serial->ReadCarPos(0, &pos) == 0){
 		dbgGroupBox->GetPosLineEdit()->setText(QString::number(pos));
 	}
+
 }
-//! [8]
+
+void MainWindow::MoveTo()
+{
+	int axis  = axisBox->currentIndex();
+	int speed = dbgGroupBox->GetSpeedBox()->currentIndex();
+	int dir = dbgGroupBox->GetRadioButton()->isChecked(); 
+	int dist = dbgGroupBox->GetMoveLineEdit()->text().toInt();
+       //	if(m_serial->MoveTo())		
+       if( m_serial->MoveTo(axis,speed,dir,dist))
+       {
+
+       }
+}
+void MainWindow::MovePulse()
+{
+	int axis  = axisBox->currentIndex();
+	int speed = dbgGroupBox->GetSpeedBox()->currentIndex();
+	int dir = dbgGroupBox->GetRadioButton()->isChecked(); 
+	int dist = dbgGroupBox->GetMoveLineEdit()->text().toInt();
+       //	if(m_serial->MoveTo())		
+       if( m_serial->MoveTo(axis,speed,dir,dist))
+       {
+
+	}
+}//! [8]
 void MainWindow::handleError(QSerialPort::SerialPortError error)
 {
     if (error == QSerialPort::ResourceError) {

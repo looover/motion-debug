@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <QDebug>
 //#include "debug.hpp"
 #include "motion_uart.hpp"
 
@@ -9,28 +10,19 @@
 
 #define		RETRY_MAX_NUM		3
 
-//extern void hexdump(const uint8_t *p, unsigned int len);
+extern void hexdump(const uint8_t *p, unsigned int len);
 extern unsigned short Crc16(unsigned char * puchMsg, unsigned short usDataLen);
 
-MotionUart::MotionUart(unsigned char addr, struct timeval *tv) :
-Addr(addr),
-TimerOut(*tv)
+MotionUart::MotionUart(unsigned char addr, QObject *parent) :
+QSerialPort(parent),
+Addr(addr)
+//TimerOut(struct timeval(0, 3000000))
 {
 	memset(Name, 0, 16);
 
-	Detect();
+	TimerOut.tv_sec = 0;
+	TimerOut.tv_usec = 300000;
 }
-
-int MotionUart::Detached()
-{
-	return 0;
-}
-
-int MotionUart::Detect()
-{
-	return 0;
-}
-
 
 #define		ACTIVE_CHECK()		\
 do{\
@@ -73,14 +65,13 @@ int MotionUart::ReadCarStatus()
 	ACTIVE_CHECK();
 
 	int ret = -1;
-	unsigned short buf[32];
+	unsigned char status[16];
 
 	Mux.lock();
 
-	//int len = InitPackage(READ_STATUS, cmd, data, len, buf);
-	//if(ReadData(buf, len, &TimerOut) > 0){
-	//	ret = 0;
-	//}
+	if(ReadData(READ_STATUS, 16, status) == 16){
+		ret = 0;
+	}
 
 	Mux.unlock();
 
@@ -98,13 +89,13 @@ int MotionUart::MoveTo(int axis, int speed, int dir, int dist)
 	unsigned char buf[32];
 	unsigned char send[32];
 	unsigned short addr = 0;
-	int len = GenModbusMoveCmd(buf, &addr, MOVE_TO, axis, dir, speed, dist);
+	int len = GenModbusMoveCmd(buf, &addr, MOVE_DIST, axis, dir, speed, dist);
 	
 	len = InitPackage(addr, MODBUS_WRITE, buf, len, send);
 
 	Mux.lock();
 			
-	int ret = WriteData(buf, len, &tv);
+	int ret = WriteData(send, len, &tv);
 
 	Mux.unlock();
 
@@ -195,21 +186,26 @@ int MotionUart::MeasureMachine()
 	return -1;
 }
 
-int MotionUart::ReadCarPos()
+int MotionUart::ReadCarPos(int axis, int * pos)
 {
 	ACTIVE_CHECK();
 
 	int ret = -1;
-	Mux.lock();
 
 	struct timeval tv;
-	tv.tv_sec = 30;
-	tv.tv_usec = 0;
+	tv.tv_sec = 0;
+	tv.tv_usec = 30000;
 
-	unsigned short pos[2];
-	//if(ReadData(0x0010, pos, 2, &tv) == 2){
-	//	ret = (int)pos[0] | (int)pos[1] << 16;
-	//}
+	unsigned char buf[32];
+	unsigned char send[32];
+	
+	unsigned short cmd = (axis << 5) | READ_POS;
+
+	Mux.lock();
+
+	if(ReadData(cmd, 4, (unsigned char*)pos) == 4){
+		ret = 0;
+	}
 
 	Mux.unlock();
 
@@ -252,12 +248,12 @@ int MotionUart::InitPackage(
 {
         int i = 0;
 
-	cmd |= Toogle;
+	//cmd |= Toogle;
 		
         dst[i++] = Addr;
         dst[i++] = dir;
+        dst[i++] = cmd & 0xFF;
         dst[i++] = cmd >> 8;
-        dst[i++] = cmd & 0x00FF;
 
         if(dir == MODBUS_READ || dir == MODBUS_WRITE){
                 dst[i++] = len;
@@ -282,39 +278,33 @@ int MotionUart::InitPackage(
 }
 
 
-int MotionUart::WaitAck(unsigned char * buf, int len, const struct timeval *tv)
+int MotionUart::WaitAck(unsigned char * ack, const struct timeval *tv)
 {
-	unsigned char ack[32];
-
-	int size = ReadBuf(ack, tv);	
-	if(size > 0){
-		if(Crc16(ack, size) == 0){
-			return 0;
-		}
-		//PMD_PRINT("crc error");
-		//hexdump(ack, size);
+	int size = 0;
+	unsigned char recv[64];
+	if((size = ReadBuf(recv, tv)) <= 0){
+		return -1;
 	}
-
-	//PMD_PRINT("wait ack failed");
-/*
-	int ret = Rs485->Read(ack, 32, tv);
-
-	unsigned char ack[5] = {0x81, 0x86, 0x02, 0xC2, 0x49};
-
-	if(ret == 5){
-		int i = 0;
-		for(i = 0; i < 5; i++){
-			if(ack[i] != rev[i]){
-				break;
-			}
-		}
-		if(i == 5){
-			return 0;
+	if(Crc16(recv, size)){
+		printf("crc error\n");
+		hexdump(recv, size);
+		return -1;
+	}
+	//format check
+	if(recv[0] != Addr){
+		return -1;
+	}
+	int len = recv[4];
+	if(len != size - 7){
+		return -1;
+	}
+	if(ack){
+		for(int i = 0; i < len; i++){
+			ack[i] = recv[5 + i];
 		}
 	}
-*/
-
-	return -1;
+	
+	return len;
 }
 
 #define SWAP(a, b)	do{\
@@ -338,11 +328,16 @@ int MotionUart::ReadBuf(unsigned char * buf, const struct timeval * tv)
 	unsigned char recv_buf[64];
 	unsigned char *rev = recv_buf;
 
-	struct timeval timeout = *tv;
+	int dly = 100;
+	if(tv){
+		dly = tv->tv_sec * 1000 + tv->tv_usec / 1000;
+	}
 	
 	int ret = -1;
 	unsigned int cnt = 0;
 	while(1){
+		waitForReadyRead(dly); 
+		int ret = (int)read((char *)recv_buf + cnt, 64);
 		//int ret = Rs485->Read(rev + cnt, 32, &timeout);
 		if(ret > 0){
 			cnt += ret;
@@ -350,8 +345,7 @@ int MotionUart::ReadBuf(unsigned char * buf, const struct timeval * tv)
 				//PMD_PRINT("cnt%d > 32", cnt);
 				return -1;
 			}else{
-				timeout.tv_sec = 0;
-				timeout.tv_usec = 30000;//3ms
+				dly = 30;
 			}
 		}else{
 			break;
@@ -361,35 +355,33 @@ int MotionUart::ReadBuf(unsigned char * buf, const struct timeval * tv)
 	if(cnt > 0){
 		//CHECK_HEADER();
 		memcpy(buf, rev, cnt);
+		hexdump(buf, cnt);
 	}
 
 	return cnt;
 }
 
-int MotionUart::ReadData(unsigned char * buf, int len, const struct timeval* tv)
+int MotionUart::ReadData(unsigned short addr, int len, unsigned char * buf, const struct timeval* tv)
 {
 	unsigned char send[32];
 	unsigned char recv[32];
 
+	int n = InitPackage(addr, MODBUS_READ, 0, len, send);
 
 	int retry = 0;
 	while(retry++ < RETRY_MAX_NUM){
 		//Rs485->Write(send, len);
+		QByteArray array((char*)send, n);
+    		write(array);
 
-		int size = ReadBuf(recv, tv);
-		if(size > 0){
-			if(Crc16(recv, size) == 0){
-				size = (recv[2] / 2 > len) ? len : recv[2] / 2;
-				for(int i = 0, j = 3; i < size; i++){
-					buf[i] = recv[j++];
-					buf[i] <<= 8;
-					buf[i] += recv[j++];
-				}
-				return size;	//return short size
+		//int size = ReadBuf(recv, tv);
+		if(WaitAck(recv, tv) == len){
+			for(int i = 0; i < len; i++){
+				buf[i] = recv[i];
 			}
-			//PMD_PRINT("crc error");
+			return len;
 		}else{
-			//PMD_PRINT("read buf size=%d", size);
+			printf("wait ack failed\n");
 		}
 	}
 
@@ -405,9 +397,13 @@ int MotionUart::WriteData(unsigned char * data, int len, const struct timeval *t
 
 	int retry = 0;
 	do{
+		qDebug() << "send data";
+		hexdump(data, len);
+		QByteArray array((char*)data, len);
+    		write(array);
 		//Rs485->Write(buf, len);
 
-		if(WaitAck(buf, len, tv) == 0){
+		if(WaitAck(buf, tv) >= 0){
 			return 0;
 		}
 		//PMD_PRINT("retry...");

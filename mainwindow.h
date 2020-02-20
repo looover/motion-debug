@@ -55,6 +55,9 @@
 #include <QMainWindow>
 #include <QSerialPort>
 
+#include "motion_uart.hpp"
+#include "config_widget.h"
+
 QT_BEGIN_NAMESPACE
 
 class QLabel;
@@ -82,9 +85,9 @@ private slots:
     void about();
     void writeData( const QByteArray &data);
     void readData();
-    void write();
     void handleError(QSerialPort::SerialPortError error);
 
+    void GetPostion();
 private:
     void initActionsConnections();
 
@@ -93,10 +96,14 @@ private:
 
     Ui::MainWindow *m_ui = nullptr;
     QLabel *m_status = nullptr;
-    Console *m_console = nullptr;
     QWidget * mainwidget;
     SettingsDialog *m_settings = nullptr;
-    QSerialPort *m_serial = nullptr;
+    //QSerialPort *m_serial = nullptr;
+	
+	MotionUart * m_serial;
+
+private:
+	MoveDbgGroupBox * dbgGroupBox;
 };
 
 #endif // MAINWINDOW_H

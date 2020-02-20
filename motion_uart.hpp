@@ -2,6 +2,8 @@
 #ifndef _MOTION_UART_H
 #define _MOTION_UART_H
 
+#include <QSerialPort>
+
 #include <mutex>
 
 using namespace std;
@@ -44,39 +46,36 @@ using std::mutex;
 #define		SET_DIR_UNIDIR		0x0000
 #define		SET_DIR_BIR		0x0001
 
-class MotionUart
+class MotionUart : public QSerialPort
 {
 public:
-	MotionUart(unsigned char addr, struct timeval * tv);
+	MotionUart(unsigned char addr, QObject *parent  = NULL);
 	~MotionUart(){
 	}
 
 public:
-	virtual int Detect();
-	virtual int Detached();
+	int ReadCarPos(int axis, int * pos);
+	int ReadCarStatus();
+	
+	int MeasureMedia(int *x, int * width);
+	int MeasureMachine();
 
-	virtual int ReadCarPos();
-	virtual int ReadCarStatus();
+	int PrintMove(void * param);
 
-	virtual int MeasureMedia(int *x, int * width);
-	virtual int MeasureMachine();
+	int GoHome(int asix, int speed);
 
-	virtual int PrintMove(void * param);
+	int MoveStop(int asix);
+	int MoveStart(int asix, int speed, int dir);
 
-	virtual int GoHome(int asix, int speed);
+	int MoveTo(int asix, int speed, int dir, int dist);
 
-	virtual int MoveStop(int asix);
-	virtual int MoveStart(int asix, int speed, int dir);
-
-	virtual int MoveTo(int asix, int speed, int dir, int dist);
-
-	virtual int SetMoveMode(unsigned int cmd, unsigned int param);
+	int SetMoveMode(unsigned int cmd, unsigned int param);
 private:
 
 
-	int WaitAck(unsigned char * buf, int len, const struct timeval *tv);
+	int WaitAck(unsigned char * buf, const struct timeval *tv);
 	int WriteData(unsigned char * data, int len, const struct timeval *timeout = NULL);
-	int ReadData(unsigned char * buf, int len, const struct timeval *tv);
+	int ReadData(unsigned short addr, int len, unsigned char * buf, const struct timeval *tv = NULL);
 
 	int ReadBuf(unsigned char * buf, const struct timeval *tv);
 	int InitPackage(unsigned short cmd, unsigned char dir, unsigned char* src, int len, unsigned char * dst);
@@ -90,10 +89,12 @@ private:
 	//lock
 	//
 
+	//QSerialPort *m_serial;
+
 	unsigned short Toogle = 0x8000;
 
 	const unsigned char Addr;
-	const struct timeval TimerOut; 
+	struct timeval TimerOut; 
 };
 
 

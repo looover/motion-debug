@@ -26,25 +26,17 @@ using std::mutex;
 #define			MOVE_DIST		0x02
 #define			MOVE_TO			0x03
 
-#define			OFFSET_MOVE		0x00
-#define			READ_POS		0x10
-#define			SET_SPEED		0x14
-#define			SET_ACC			0x1C
+#define			READ_POS		0x0010
+#define			READ_STATUS		0x0140
+#define			UPDATE_START		0x0141
+#define			UPDATE_FINISH		0x0142
+#define			UPDATE_DATA		0x8000
 
-#define			READ_STATUS		0x0100
 
-#define		MODBUS_READ	0x0003
-#define		MODBUS_WRITE	0x0006
-#define		MODBUS_PRINT	0x0010
+#define			MODBUS_READ	0x0003
+#define			MODBUS_WRITE	0x0006
+#define			MODBUS_PRINT	0x0010
 
-#define		SET_SPEED		0x0036
-#define		STE_SPEED_LOW		0x0000
-#define		STE_SPEED_MIDDLE	0x0001
-#define		STE_SPEED_HIGH		0x0002
-
-#define		SET_DIR			0x0030
-#define		SET_DIR_UNIDIR		0x0000
-#define		SET_DIR_BIR		0x0001
 
 class MotionUart : public QSerialPort
 {
@@ -70,9 +62,11 @@ public:
 	int MoveTo(int asix, int speed, int dir, int dist);
 
 	int SetMoveMode(unsigned int cmd, unsigned int param);
+
+	int UpdateStart(int len);
+	int UpdateFinish(unsigned char * hash, int len);
+	int UpdateFirmwear(unsigned char * data, int len);
 private:
-
-
 	int WaitAck(unsigned char * buf, const struct timeval *tv);
 	int WriteData(unsigned char * data, int len, const struct timeval *timeout = NULL);
 	int ReadData(unsigned short addr, int len, unsigned char * buf, const struct timeval *tv = NULL);

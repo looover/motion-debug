@@ -22,7 +22,7 @@
      <x>0</x>
      <y>0</y>
      <width>400</width>
-     <height>19</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCalls">
@@ -40,6 +40,8 @@
     </property>
     <addaction name="actionConfigure"/>
     <addaction name="actionClear"/>
+    <addaction name="actionUpdate"/>
+    <addaction name="actionGear_ratio"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -151,6 +153,16 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionUpdate">
+   <property name="text">
+    <string>update</string>
+   </property>
+  </action>
+  <action name="actionGear_ratio">
+   <property name="text">
+    <string>gear ratio</string>
    </property>
   </action>
  </widget>

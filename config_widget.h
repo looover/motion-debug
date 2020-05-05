@@ -33,6 +33,7 @@ public:
 	}
 
 	int WriteIO(int s){
+		s = s;
 		return -1;
 	}
 	int IsInput(){
@@ -73,7 +74,9 @@ class LIMIT : public GPIO {
 public:
 	LIMIT(GPIO& gpio, int chanle, int s) : GPIO(gpio)
 	{
-	
+		gpio = gpio;
+		chanle = chanle;
+		s = s;	
 	}
 
 private:
@@ -130,6 +133,7 @@ public:
 	}
 	int SelectChannel(int ch){	
 		gpioComboBox->setCurrentIndex(ch);
+		return 0;
 	}
 private:
 	QHBoxLayout *Layout;
@@ -296,13 +300,16 @@ public:
 	{
 		QLabel *speedLabel = new QLabel(tr("移动速度"));
 		speedBox = new QComboBox();
-		for(int i = 0; i < 4; i++){
-			QString s = "Speed";
-			speedBox->addItem(s);
-		}
+        speedBox->addItem("低速");
+        speedBox->addItem("中速");
+        speedBox->addItem("高速");
+    //	for(int i = 0; i < 4; i++){
+    //		QString s = "Speed";
+    //		speedBox->addItem(s);
+    //	}
 		dir_positive = new QRadioButton(tr("正向"));
 		dir_reverse  = new QRadioButton(tr("反向"));
-
+        dir_positive->setChecked(true);
 		QGridLayout * dbgLayout = new QGridLayout;
 		pulsePushButton = new QPushButton("移动固定(脉冲)");
 	        pulseLineEdit = new QLineEdit;

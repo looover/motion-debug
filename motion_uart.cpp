@@ -60,6 +60,7 @@ int MotionUart::GenModbusMoveCmd(unsigned char * buf, unsigned short * addr,
 
 	return i;
 }
+
 int MotionUart::ReadCarStatus()
 {
 	ACTIVE_CHECK();
@@ -210,6 +211,74 @@ int MotionUart::ReadCarPos(int axis, int * pos)
 	Mux.unlock();
 
 	return ret;
+}
+
+int MotionUart::UpdateStart(int size)
+{
+	unsigned char send[32];
+	int len = InitPackage(UPDATE_START, MODBUS_WRITE, (uint8_t*)&size, 4, send);
+
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 30000;
+
+	Mux.lock();
+
+	int ret = WriteData(send, len, &tv);
+	
+	Mux.unlock();
+
+	return 0;
+}
+
+int MotionUart::UpdateFinish(unsigned char * hash, int len)
+{
+	unsigned char send[64];
+	len = InitPackage(UPDATE_FINISH, MODBUS_WRITE, hash, len, send);
+
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 30000;
+
+	Mux.lock();
+
+	int ret = WriteData(send, len, &tv);
+	
+	Mux.unlock();
+
+	return 0;
+}
+
+int MotionUart::UpdateFirmwear(unsigned char * data, int size)
+{
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 30000;
+
+	const int page_size = 1024 * 16;
+	const int pacakge_size = 64;
+
+	int index = 0;
+	unsigned char * src = data;
+	unsigned char send[128];
+	while(size){
+		int len = (size > pacakge_size) ? pacakge_size : size;
+		len = InitPackage(UPDATE_DATA + index, MODBUS_WRITE, src, len, send);
+	
+		Mux.lock();
+		int ret = WriteData(send, len, &tv);
+		Mux.unlock();
+	
+		if(ret != NULL){
+			return ret;
+		}
+
+		index++;
+		size -= 64;
+		src += 64;
+	}
+
+	return 0;
 }
 
 int MotionUart::SetMoveMode(unsigned int cmd, unsigned int param)

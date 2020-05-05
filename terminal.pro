@@ -13,14 +13,18 @@ SOURCES += \
     console.cpp \
     motion_uart.cpp \
     crc.cpp \
-    hexdump.cpp
+    hexdump.cpp \
+    aes.cpp \
+    sha256.cpp 
 
 HEADERS += \
     mainwindow.h \
     settingsdialog.h \
     console.h \
     motion_uart.hpp \
-    config_widget.h
+    config_widget.h \
+    aes.h \
+    sha256.h 
 
 FORMS += \
     mainwindow.ui \

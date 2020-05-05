@@ -87,11 +87,13 @@ private slots:
     void readData();
     void handleError(QSerialPort::SerialPortError error);
 
+    void Update();
     void MoveTo();
     void MovePulse();
     void GetPostion();
 private:
     void initActionsConnections();
+	int UpdataProcess(QString& file);
 
 private:
     void showStatusMessage(const QString &message);

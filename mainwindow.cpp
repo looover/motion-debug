@@ -49,6 +49,8 @@
 **
 ****************************************************************************/
 
+#include "aes.h"
+#include "sha256.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "console.h"
@@ -64,8 +66,12 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include  <QDebug>
+#include <QFileDialog>
 
 
+using namespace std;
+
+void hexdump(const uint8_t *p, unsigned int len);
 
 QByteArray HexStringToByteArray(QString HexString)
   {
@@ -197,6 +203,11 @@ void MainWindow::openSerialPort()
         showStatusMessage(tr("Connected to %1 : %2, %3, %4, %5, %6")
                           .arg(p.name).arg(p.stringBaudRate).arg(p.stringDataBits)
                           .arg(p.stringParity).arg(p.stringStopBits).arg(p.stringFlowControl));
+
+	if(m_serial->ReadCarStatus()){
+		printf("read status error");
+	}
+	//
     } else {
         QMessageBox::critical(this, tr("Error"), m_serial->errorString());
 
@@ -257,6 +268,7 @@ void MainWindow::MoveTo()
 	int speed = dbgGroupBox->GetSpeedBox()->currentIndex();
 	int dir = dbgGroupBox->GetRadioButton()->isChecked(); 
 	int dist = dbgGroupBox->GetMoveLineEdit()->text().toInt();
+	qDebug() << "dist" << dist;
        //	if(m_serial->MoveTo())		
        if( m_serial->MoveTo(axis,speed,dir,dist))
        {
@@ -270,11 +282,107 @@ void MainWindow::MovePulse()
 	int dir = dbgGroupBox->GetRadioButton()->isChecked(); 
 	int dist = dbgGroupBox->GetMoveLineEdit()->text().toInt();
        //	if(m_serial->MoveTo())		
-       if( m_serial->MoveTo(axis,speed,dir,dist))
-       {
+	qDebug() << "dist" << dist;
+	if( m_serial->MoveTo(axis,speed,dir,dist)){
 
 	}
 }//! [8]
+
+struct UpdataPackage{
+	unsigned int Header;
+	unsigned int Length;
+	unsigned int Target;
+	unsigned int Offset;
+	unsigned int Ency;
+	unsigned char Hash[32];
+};
+
+int MainWindow::UpdataProcess(QString& file)
+{
+	int ret = -1;
+	std::string str = file.toStdString();
+	
+	FILE * fp = fopen(str.c_str(), "rb");
+	if(fp != NULL){
+		UpdataPackage header;
+		int size = fread(&header, 1, sizeof(header), fp);
+		if(size != sizeof(header)){
+
+		}
+
+		char * key = "this is a 16 key";
+		unsigned char iv[16];
+
+		int offset = header.Offset - 16 - sizeof(header);
+		unsigned char * ency_buf = new unsigned char [1024 * 1024];
+		unsigned char * data = new unsigned char [1024 * 1024];
+
+		size = fread(ency_buf, 1, offset, fp);
+		if(size != offset){
+			qDebug() << "error offset:" << size;
+		}
+		size = fread(iv, 1, 16, fp);
+		if(size != 16){
+			qDebug() << "error iv:" << size;
+		}
+
+		WORD key_schedule[60];
+		size = fread(ency_buf, 1, 1024 * 1024, fp);
+		fclose(fp);
+
+		aes_key_setup((uint8_t*)key, key_schedule, 128);
+		aes_decrypt_cbc(ency_buf, size, data, key_schedule, 128, iv);
+		
+		BYTE buf[SHA256_BLOCK_SIZE];
+
+		SHA256_CTX ctx;
+		sha256_init(&ctx);
+		sha256_update(&ctx, data, header.Length);
+		sha256_final(&ctx, buf);
+
+		if(memcmp(buf, header.Hash, 32) == 0){
+			if(m_serial->UpdateStart(header.Length)){
+				qDebug() << "update error";
+			}
+			if(m_serial->UpdateFirmwear(data, header.Length)){
+				qDebug() << "update error";
+			}
+			if(m_serial->UpdateFinish(header.Hash, 32)){
+				qDebug() << "update error";
+			}
+
+			ret = 0;
+		}else{
+			qDebug() << "hash check error";
+		}
+
+		delete ency_buf;
+		delete data;
+	}
+
+	return ret;
+}
+
+void MainWindow::Update()
+{
+	QFileDialog *fileDialog = new QFileDialog();
+	fileDialog->setWindowTitle("选择文件");
+	fileDialog->setDirectory(".");
+	fileDialog->setFileMode(QFileDialog::ExistingFiles);
+	
+	QDir dir("./");
+	dir.setFilter(QDir::Dirs | QDir::Hidden | QDir::NoSymLinks | QDir::NoDotAndDotDot);
+	QFileInfoList list = dir.entryInfoList();
+
+	QString filename;
+	if(fileDialog->exec()){
+		filename = fileDialog->selectedFiles()[0];
+		qDebug() << "selected file is" << filename;
+		UpdataProcess(filename);
+	}
+
+}
+
 void MainWindow::handleError(QSerialPort::SerialPortError error)
 {
     if (error == QSerialPort::ResourceError) {
@@ -287,12 +395,14 @@ void MainWindow::handleError(QSerialPort::SerialPortError error)
 void MainWindow::initActionsConnections()
 {
     connect(m_ui->actionConnect, &QAction::triggered, this, &MainWindow::openSerialPort);
+    connect(m_ui->actionUpdate, &QAction::triggered, this, &MainWindow::Update);
     connect(m_ui->actionDisconnect, &QAction::triggered, this, &MainWindow::closeSerialPort);
     connect(m_ui->actionQuit, &QAction::triggered, this, &MainWindow::close);
     connect(m_ui->actionConfigure, &QAction::triggered, m_settings, &SettingsDialog::show);
     //connect(m_ui->actionClear, &QAction::triggered, m_console, &Console::clear);
     connect(m_ui->actionAbout, &QAction::triggered, this, &MainWindow::about);
     connect(m_ui->actionAboutQt, &QAction::triggered, qApp, &QApplication::aboutQt);
+
 }
 
 void MainWindow::showStatusMessage(const QString &message)

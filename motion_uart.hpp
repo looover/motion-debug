@@ -30,12 +30,12 @@ using std::mutex;
 #define			READ_STATUS		0x0140
 #define			UPDATE_START		0x0141
 #define			UPDATE_FINISH		0x0142
-#define			UPDATE_DATA		0x8000
 
 
 #define			MODBUS_READ	0x0003
 #define			MODBUS_WRITE	0x0006
-#define			MODBUS_PRINT	0x0010
+#define			MODBUS_ACK	0x0009
+#define			MODBUS_UPDATE	0x0010
 
 
 class MotionUart : public QSerialPort

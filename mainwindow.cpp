@@ -341,16 +341,32 @@ int MainWindow::UpdataProcess(QString& file)
 		sha256_final(&ctx, buf);
 
 		if(memcmp(buf, header.Hash, 32) == 0){
+#if 1
+			int err = 0;
 			if(m_serial->UpdateStart(header.Length)){
-				qDebug() << "update error";
+				err = 1;
 			}
-			if(m_serial->UpdateFirmwear(data, header.Length)){
-				qDebug() << "update error";
+			if(err || m_serial->UpdateFirmwear(data, header.Length)){
+				err = 1;
 			}
-			if(m_serial->UpdateFinish(header.Hash, 32)){
-				qDebug() << "update error";
+			if(err || m_serial->UpdateFinish(header.Hash, 32)){
+				err = 1;
 			}
 
+			if(err){
+				QMessageBox::warning(NULL, 
+					tr("ERROR"), "升级失败", QMessageBox::Ok);
+			}else{
+				QMessageBox::warning(NULL, 
+					tr("WARNING"), "升级成功", QMessageBox::Ok);
+			}
+#else
+			fp = fopen("./check.bin", "wb+");
+			if(fp != NULL){
+				fwrite(data, 1, header.Length, fp);
+				fclose(fp);
+			}
+#endif
 			ret = 0;
 		}else{
 			qDebug() << "hash check error";

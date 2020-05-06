@@ -219,8 +219,8 @@ int MotionUart::UpdateStart(int size)
 	int len = InitPackage(UPDATE_START, MODBUS_WRITE, (uint8_t*)&size, 4, send);
 
 	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 30000;
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
 
 	Mux.lock();
 
@@ -237,8 +237,8 @@ int MotionUart::UpdateFinish(unsigned char * hash, int len)
 	len = InitPackage(UPDATE_FINISH, MODBUS_WRITE, hash, len, send);
 
 	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 30000;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
 
 	Mux.lock();
 
@@ -252,8 +252,8 @@ int MotionUart::UpdateFinish(unsigned char * hash, int len)
 int MotionUart::UpdateFirmwear(unsigned char * data, int size)
 {
 	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 30000;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
 
 	const int page_size = 1024 * 16;
 	const int pacakge_size = 64;
@@ -263,19 +263,20 @@ int MotionUart::UpdateFirmwear(unsigned char * data, int size)
 	unsigned char send[128];
 	while(size){
 		int len = (size > pacakge_size) ? pacakge_size : size;
-		len = InitPackage(UPDATE_DATA + index, MODBUS_WRITE, src, len, send);
+
+		int cnt = InitPackage(index, MODBUS_UPDATE, src, len, send);
 	
 		Mux.lock();
-		int ret = WriteData(send, len, &tv);
+		int ret = WriteData(send, cnt, &tv);
 		Mux.unlock();
 	
-		if(ret != NULL){
+		if(ret < 0){
 			return ret;
 		}
 
 		index++;
-		size -= 64;
-		src += 64;
+		size -= len;
+		src += len;
 	}
 
 	return 0;
@@ -324,11 +325,7 @@ int MotionUart::InitPackage(
         dst[i++] = cmd & 0xFF;
         dst[i++] = cmd >> 8;
 
-        if(dir == MODBUS_READ || dir == MODBUS_WRITE){
-                dst[i++] = len;
-        }else{
-
-		}
+	dst[i++] = len;
 		
         //if(dir == MODBUS_WRITE)//for master
         if(src && dst)
@@ -424,7 +421,7 @@ int MotionUart::ReadBuf(unsigned char * buf, const struct timeval * tv)
 	if(cnt > 0){
 		//CHECK_HEADER();
 		memcpy(buf, rev, cnt);
-		hexdump(buf, cnt);
+		//hexdump(buf, cnt);
 	}
 
 	return cnt;
@@ -466,8 +463,6 @@ int MotionUart::WriteData(unsigned char * data, int len, const struct timeval *t
 
 	int retry = 0;
 	do{
-		qDebug() << "send data";
-		hexdump(data, len);
 		QByteArray array((char*)data, len);
     		write(array);
 		//Rs485->Write(buf, len);
@@ -475,7 +470,7 @@ int MotionUart::WriteData(unsigned char * data, int len, const struct timeval *t
 		if(WaitAck(buf, tv) >= 0){
 			return 0;
 		}
-		//PMD_PRINT("retry...");
+		qDebug() << "retry...";
 	}while(++retry < RETRY_MAX_NUM);
 
 	return -1;

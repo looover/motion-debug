@@ -63,6 +63,9 @@ public:
 
 	int SetMoveMode(unsigned int cmd, unsigned int param);
 
+	int GetUpdateProcess(){
+		return Percent;
+	}
 	int UpdateStart(int len);
 	int UpdateFinish(unsigned char * hash, int len);
 	int UpdateFirmwear(unsigned char * data, int len);
@@ -84,6 +87,7 @@ private:
 	//
 
 	//QSerialPort *m_serial;
+	int Percent;
 
 	unsigned short Toogle = 0x8000;
 

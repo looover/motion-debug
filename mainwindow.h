@@ -88,6 +88,8 @@ private slots:
     void handleError(QSerialPort::SerialPortError error);
 
     void Update();
+    void UpdateTimer();
+
     void MoveTo();
     void MovePulse();
     void GetPostion();

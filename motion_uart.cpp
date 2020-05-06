@@ -20,6 +20,7 @@ Addr(addr)
 {
 	memset(Name, 0, 16);
 
+	Percent = 0;
 	TimerOut.tv_sec = 0;
 	TimerOut.tv_usec = 300000;
 }
@@ -251,12 +252,15 @@ int MotionUart::UpdateFinish(unsigned char * hash, int len)
 
 int MotionUart::UpdateFirmwear(unsigned char * data, int size)
 {
+	Percent = 0;
+
 	struct timeval tv;
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 
 	const int page_size = 1024 * 16;
 	const int pacakge_size = 64;
+	const int package_num = size / 64;
 
 	int index = 0;
 	unsigned char * src = data;
@@ -265,7 +269,7 @@ int MotionUart::UpdateFirmwear(unsigned char * data, int size)
 		int len = (size > pacakge_size) ? pacakge_size : size;
 
 		int cnt = InitPackage(index, MODBUS_UPDATE, src, len, send);
-	
+
 		Mux.lock();
 		int ret = WriteData(send, cnt, &tv);
 		Mux.unlock();
@@ -274,10 +278,14 @@ int MotionUart::UpdateFirmwear(unsigned char * data, int size)
 			return ret;
 		}
 
+		Percent = index * 100 / package_num;
+
 		index++;
 		size -= len;
 		src += len;
 	}
+
+	Percent = 100;
 
 	return 0;
 }

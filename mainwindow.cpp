@@ -67,7 +67,7 @@
 #include <QCheckBox>
 #include  <QDebug>
 #include <QFileDialog>
-
+#include <QTimer>
 
 using namespace std;
 
@@ -342,24 +342,22 @@ int MainWindow::UpdataProcess(QString& file)
 
 		if(memcmp(buf, header.Hash, 32) == 0){
 #if 1
-			int err = 0;
-			if(m_serial->UpdateStart(header.Length)){
-				err = 1;
-			}
-			if(err || m_serial->UpdateFirmwear(data, header.Length)){
-				err = 1;
-			}
-			if(err || m_serial->UpdateFinish(header.Hash, 32)){
-				err = 1;
-			}
+			//QTimer * timer = new QTimer(this);
+			//connect(timer, SIGNAL(timeout()), this,  SLOT(UpdateTimer()));
+			//timer->start(1000);
 
-			if(err){
-				QMessageBox::warning(NULL, 
-					tr("ERROR"), "升级失败", QMessageBox::Ok);
-			}else{
-				QMessageBox::warning(NULL, 
-					tr("WARNING"), "升级成功", QMessageBox::Ok);
+			ret = 0;
+			if(m_serial->UpdateStart(header.Length)){
+				ret = 1;
 			}
+			if(ret || m_serial->UpdateFirmwear(data, header.Length)){
+				ret = 2;
+			}
+			if(ret || m_serial->UpdateFinish(header.Hash, 32)){
+				ret = 3;
+			}
+			//timer->stop();
+			//disconnect(timer, SIGNAL(timeout()), this,  SLOT(UpdateTimer()));
 #else
 			fp = fopen("./check.bin", "wb+");
 			if(fp != NULL){
@@ -367,7 +365,6 @@ int MainWindow::UpdataProcess(QString& file)
 				fclose(fp);
 			}
 #endif
-			ret = 0;
 		}else{
 			qDebug() << "hash check error";
 		}
@@ -394,7 +391,14 @@ void MainWindow::Update()
 	if(fileDialog->exec()){
 		filename = fileDialog->selectedFiles()[0];
 		qDebug() << "selected file is" << filename;
-		UpdataProcess(filename);
+		
+		if(UpdataProcess(filename)){
+			QMessageBox::warning(NULL, 
+				tr("ERROR"), "升级失败", QMessageBox::Ok);
+		}else{
+			QMessageBox::warning(NULL, 
+				tr("WARNING"), "升级成功", QMessageBox::Ok);
+		}
 	}
 
 }
@@ -424,4 +428,10 @@ void MainWindow::initActionsConnections()
 void MainWindow::showStatusMessage(const QString &message)
 {
     m_status->setText(message);
+}
+
+void MainWindow::UpdateTimer()
+{
+	qDebug() << "update percent " << m_serial->GetUpdateProcess();
+	m_status->setText(QString::number(m_serial->GetUpdateProcess()));
 }

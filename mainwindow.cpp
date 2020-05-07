@@ -230,12 +230,13 @@ void MainWindow::closeSerialPort()
 }
 //! [5]
 
+#define		UI_VERSION		"1.0.0"
 void MainWindow::about()
 {
-    QMessageBox::about(this, tr("About Simple Terminal"),
-                       tr("The <b>Simple Terminal</b> example demonstrates how to "
-                          "use the Qt Serial Port module in modern GUI applications "
-                          "using Qt, with a menu bar, toolbars, and a status bar."));
+	char info[512];
+	sprintf(info, "UI Version: %s\nBuild Date: %s\nBuild Time: %s\nBoard Id:\nProduct Id:\nVender Id:", UI_VERSION,  __DATE__, __TIME__);
+
+	QMessageBox::about(this, tr("版本信息"), info);
 }
 
 //! [6]
